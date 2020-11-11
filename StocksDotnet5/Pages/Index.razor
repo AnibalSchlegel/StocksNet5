@@ -1,0 +1,39 @@
+﻿@page "/"
+
+@using System.Net.Http
+@inject HttpClient Http
+
+@if (updatingDb)
+{
+    <p><em>Updating database...</em></p>
+}
+else if (!lastUpdate.HasValue)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <p><em>Last Update: @lastUpdate.Value.ToString("dd/MM/yyyy")</em></p>
+
+    <button class="btn btn-primary" @onclick="UpdateAsync">Update</button>
+}
+
+@code
+{
+    DateTime? lastUpdate;
+    bool updatingDb = false;
+
+    protected override async Task OnInitializedAsync() =>
+        await UpdateLastUpdateDate();
+        
+
+    protected async Task UpdateAsync() {
+        updatingDb = true;
+        await Http.GetAsync("https://localhost:44333/Stocks/Update");
+        updatingDb = false;
+        await UpdateLastUpdateDate();
+    }
+
+    protected async Task UpdateLastUpdateDate() =>
+        lastUpdate = await Http.GetJsonAsync<DateTime>("https://localhost:44333/Stocks/LastUpdate");
+}

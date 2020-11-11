@@ -1,0 +1,82 @@
+﻿@page "/fetchdata"
+
+@using StocksNet5.Data
+@using System.Net.Http
+@inject HttpClient Http
+
+<h1>Stats</h1>
+
+@if (stockData == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <span><input type="checkbox" @onchange="ChangeData" checked="@UseCCL" /> Use CCL</span>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Last Price</th>
+                <th>Min Price</th>
+                <th>Avg Price</th>
+                <th>Max Price</th>
+                <th>Vs Avg</th>
+                <th>Vs Max</th>
+                <th style="color: forestgreen">Last Price</th>
+                <th style="color: forestgreen">Min Price</th>
+                <th style="color: forestgreen">Avg Price</th>
+                <th style="color: forestgreen">Max Price</th>
+                <th style="color: forestgreen">Vs Avg</th>
+                <th style="color: forestgreen">Vs Max</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var stock in stockData)
+            {
+                <tr>
+                    <td>@stock.Symbol</td>
+                    <td>$@stock.LastPrice</td>
+                    <td>$@stock.MinPrice</td>
+                    <td>$@stock.AveragePrice</td>
+                    <td>$@stock.MaxPrice</td>
+                    <td>@stock.VsAvgPrice%</td>
+                    <td>@stock.VsMaxPrice%</td>
+                    <td>$@stock.LastPriceUsd</td>
+                    <td>$@stock.MinPriceUsd</td>
+                    <td>$@stock.AveragePriceUsd</td>
+                    <td>$@stock.MaxPriceUsd</td>
+                    <td>@stock.VsAvgPriceUsd%</td>
+                    <td>@stock.VsMaxPriceUsd%</td>
+                </tr>
+
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private Statistics[] stockData;
+    private bool UseCCL = true;
+
+    protected override async Task OnInitializedAsync() => await RetrieveData();
+
+    protected async Task RetrieveData()
+    {
+        string dollarType = UseCCL ? "CCL" : "OFICIAL";
+        stockData = await Http.GetJsonAsync<Statistics[]>("https://localhost:44333/Stocks/GetStats/" + dollarType);
+    }
+
+    protected async Task Refresh()
+    {
+        stockData = null;
+        await RetrieveData();
+    }
+
+    protected async Task ChangeData()
+    {
+        UseCCL = !UseCCL;
+        await Refresh();
+    }
+}
