@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace StocksAPI.ExternalDataProviders
 {
@@ -12,30 +13,29 @@ namespace StocksAPI.ExternalDataProviders
     {
         const string BASE_URL = "http://ravaonline.com/empresas/precioshistoricos.php?e={0}&csv=1";
 
-        public List<PriceData> DownloadPriceSeries(Symbol symbol, DateTime? lastKnownDate)
+        public async Task<List<PriceData>> DownloadPriceSeries(Symbol symbol, DateTime? lastKnownDate)
         {
             if (lastKnownDate.HasValue && lastKnownDate == DateTime.Today)
                 return new List<PriceData>();
 
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(string.Format(BASE_URL, symbol.Name));
-            HttpWebResponse resp = (HttpWebResponse)req.GetResponse();
+            WebRequest request = WebRequest.Create(string.Format(BASE_URL, symbol.Name));
+            WebResponse response = await request.GetResponseAsync();
 
-            var sr = new StreamReader(resp.GetResponseStream());
-            var pd = new List<PriceData>();
+            var streamReader = new StreamReader(response.GetResponseStream());
+            
+            if (streamReader == null)
+                return new List<PriceData>();
 
-            if (sr == null)
-                return pd;
-
-            return ParseResponseStream(sr, lastKnownDate,symbol);
+            return ParseResponseStream(streamReader, lastKnownDate, symbol);
         }
 
-        private List<PriceData> ParseResponseStream(StreamReader sr, DateTime? lastKnownDate, Symbol symbol)
+        private List<PriceData> ParseResponseStream(StreamReader streamReader, DateTime? lastKnownDate, Symbol symbol)
         {
             List<PriceData> parsedData = new List<PriceData>();
 
-            while (!sr.EndOfStream)
+            while (!streamReader.EndOfStream)
             {
-                var newTicketData = ParseSingleLine(sr.ReadLine(), lastKnownDate, symbol);
+                var newTicketData = ParseSingleLine(streamReader.ReadLine(), lastKnownDate, symbol);
 
                 if (newTicketData != null)
                     parsedData.Add(newTicketData);
@@ -55,10 +55,10 @@ namespace StocksAPI.ExternalDataProviders
 
                 if (lastKnownDate.HasValue && lastKnownDate.Value >= day.Date) return null;
 
-                day.OpenPrice = Convert.ToDecimal(data[1].Replace("\"", "").Replace(".", ","), CultureInfo.GetCultureInfo("es")).TwoDecimalValues();
-                day.MaxPrice = Convert.ToDecimal(data[2].Replace("\"", "").Replace(".", ","), CultureInfo.GetCultureInfo("es")).TwoDecimalValues();
-                day.MinPrice = Convert.ToDecimal(data[3].Replace("\"", "").Replace(".", ","), CultureInfo.GetCultureInfo("es")).TwoDecimalValues();
-                day.ClosingPrice = Convert.ToDecimal(data[4].Replace("\"", "").Replace(".", ","), CultureInfo.GetCultureInfo("es")).TwoDecimalValues();
+                day.OpenPrice = ParseSegment(data[1]);
+                day.MaxPrice = ParseSegment(data[2]);
+                day.MinPrice = ParseSegment(data[3]);
+                day.ClosingPrice = ParseSegment(data[4]);
                 day.Volume = int.Parse(data[5].Replace("\"", ""));
                 day.Symbol = symbol;
 
@@ -71,6 +71,11 @@ namespace StocksAPI.ExternalDataProviders
             {
                 return null;
             }
+        }
+
+        private decimal ParseSegment(string segment)
+        {
+            return Convert.ToDecimal(segment.Replace("\"", "").Replace(".", ","), CultureInfo.GetCultureInfo("es")).TwoDecimalValues();
         }
     }
 }

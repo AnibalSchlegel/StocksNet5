@@ -64,9 +64,9 @@ namespace StocksAPI.Data
             return default;
         }
 
-        public DateTime GetLastKnownDateForDollarData()
+        public async Task<DateTime> GetLastKnownDateForDollarData()
         {
-            var date = this.DollarData.OrderByDescending(z => z.ExchangeDate).Select(y => y.ExchangeDate).FirstOrDefault();
+            var date = await this.DollarData.OrderByDescending(z => z.ExchangeDate).Select(y => y.ExchangeDate).FirstOrDefaultAsync();
 
             if (date == default)
             {
@@ -75,12 +75,17 @@ namespace StocksAPI.Data
             return date;
         }
 
-        public DateTime? GetLastKnownDateForSymbol(int id)
+        public async Task<DateTime?> GetLastKnownDateForSymbol(int id)
         {
-            return this.PriceData.Where(x => x.Symbol.ID == id).OrderByDescending(z => z.Date).Select(y => y.Date).FirstOrDefault();
+            return await 
+                this.PriceData
+                .Where(x => x.Symbol.ID == id)
+                .OrderByDescending(z => z.Date)
+                .Select(y => y.Date)
+                .FirstOrDefaultAsync();
         }
 
-        public void UpdateStatus()
+        public async void UpdateStatus()
         {
             if (this.Status.Count() == 1)
             {
@@ -91,7 +96,7 @@ namespace StocksAPI.Data
             }
             else
             {
-                this.Status.Add(new Status { LastUpdate = DateTime.Now });
+                await this.Status.AddAsync(new Status { LastUpdate = DateTime.Now });
             }
         }
 
@@ -99,7 +104,7 @@ namespace StocksAPI.Data
         {
             var priceSeries = new List<PriceData>();
 
-            var symbolId = symbol != null ? this.Symbol.Where(x => x.Name == symbol).FirstOrDefault().ID : -1;
+            var symbolId = symbol != null ? this.Symbol.Where(x => x.Name == symbol).FirstOrDefaultAsync().Result.ID : -1;
 
             if (currency.Equals("PESOS"))
             {

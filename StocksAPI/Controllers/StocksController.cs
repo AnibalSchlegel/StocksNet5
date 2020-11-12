@@ -33,7 +33,7 @@ namespace StocksAPI.Controllers
                 if (status >= DateTime.Today)
                     return Ok("System already up-to-date.");
 
-                var date = context.GetLastKnownDateForDollarData();
+                var date = await context.GetLastKnownDateForDollarData();
 
                 foreach (DollarData dd in await dollarDataProvider.DownloadDollarData(date))
                 {
@@ -41,8 +41,8 @@ namespace StocksAPI.Controllers
                 }
                 foreach (Symbol s in context.Symbol)
                 {
-                    DateTime? lastDate = context.GetLastKnownDateForSymbol(s.ID);
-                    this.context.PriceData.AddRange(stockDataProvider.DownloadPriceSeries(s, lastDate));
+                    DateTime? lastDate = await context.GetLastKnownDateForSymbol(s.ID);
+                    this.context.PriceData.AddRange(await stockDataProvider.DownloadPriceSeries(s, lastDate));
                 }
 
                 context.UpdateStatus();
