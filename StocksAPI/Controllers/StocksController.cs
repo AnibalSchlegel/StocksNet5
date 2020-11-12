@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using StocksAPI.Data;
-using StocksAPI.ExternalDataProviders;
 using StocksAPI.Models;
+using StocksAPI.Services;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,15 +11,11 @@ namespace StocksAPI.Controllers
     [Route("[controller]")]
     public class StocksController : ControllerBase
     {
-        readonly StockDbContext context;
-        readonly IStockDataProvider stockDataProvider;
-        readonly IDollarDataProvider dollarDataProvider;
+        readonly IStockDataService stockDataService;
 
-        public StocksController(StockDbContext context, IStockDataProvider stockDataProvider, IDollarDataProvider dollarDataProvider)
+        public StocksController(IStockDataService stockDataService)
         {
-            this.context = context;
-            this.dollarDataProvider = dollarDataProvider;
-            this.stockDataProvider = stockDataProvider;
+            this.stockDataService = stockDataService;
         }
 
         [HttpGet("Update")]
@@ -28,40 +23,30 @@ namespace StocksAPI.Controllers
         {
             try
             {
-                var status = await context.GetLastUpdateDate();
+                var lastUpdateDate = await stockDataService.GetLastUpdateDate();
 
-                if (status >= DateTime.Today)
+                if (lastUpdateDate >= DateTime.Today)
                     return Ok("System already up-to-date.");
 
-                var date = await context.GetLastKnownDateForDollarData();
+                bool updateResult = await stockDataService.Update();
 
-                foreach (DollarData dd in await dollarDataProvider.DownloadDollarData(date))
-                {
-                    this.context.DollarData.Add(dd);
-                }
-                foreach (Symbol s in context.Symbol)
-                {
-                    DateTime? lastDate = await context.GetLastKnownDateForSymbol(s.ID);
-                    this.context.PriceData.AddRange(await stockDataProvider.DownloadPriceSeries(s, lastDate));
-                }
-
-                context.UpdateStatus();
-                await context.SaveChangesAsync();
-
-                return Ok("System updated successfully.");
+                if (updateResult)
+                    return Ok("System updated successfully.");
+                else
+                    return Conflict("An error has ocurred while updating the stock data.");
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                return NotFound(e.Message);
+                return StatusCode(500, ex.Message);
             }
         }
 
         [HttpGet("Symbols")]
-        public IActionResult GetSymbols()
+        public async Task<IActionResult> GetSymbols()
         {
             try
             {
-                return Ok(context.Set<Symbol>().OrderBy(x=>x.Name).ToList());
+                return Ok(await stockDataService.GetAllSymbols());
             }
             catch (Exception ex)
             {
@@ -76,9 +61,11 @@ namespace StocksAPI.Controllers
             {
                 if (string.IsNullOrEmpty(symbol))
                     return BadRequest("Invalid parameter: symbol.");
+                
                 if (string.IsNullOrEmpty(currency) || (currency != "CCL" && currency != "OFICIAL"))
                     currency = "PESOS";
-                return Ok(await context.GetAnalytics(symbol, currency));
+               
+                return Ok(await stockDataService.GetAnalytics(symbol, currency));
             }
             catch (Exception ex)
             {
@@ -93,13 +80,17 @@ namespace StocksAPI.Controllers
             {
                 if (string.IsNullOrEmpty(symbol))
                     symbol = "ALL";
+                
                 if (string.IsNullOrEmpty(currency) || (currency != "CCL" && currency != "OFICIAL"))
                     currency = "PESOS";
-                var data = await context.GetPriceDataAsCsv(symbol, currency);
+
+                var data = await stockDataService.GetSymbolDataForCsv(symbol, currency);
+                
                 var result = new FileContentResult(data, "application/octet-stream")
                 {
                     FileDownloadName = $"{symbol}_{currency}.csv"
                 };
+                
                 return result;
             }
             catch (Exception ex)
@@ -113,7 +104,7 @@ namespace StocksAPI.Controllers
         {
             try
             {
-                return Ok(await context.GetLastUpdateDate());
+                return Ok(await stockDataService.GetLastUpdateDate());
             }
             catch (Exception ex)
             {
@@ -127,9 +118,9 @@ namespace StocksAPI.Controllers
             try
             {
                 if(!string.IsNullOrEmpty(dollarType))
-                    return Ok(await context.GetAllStatistics(default,DateTime.Today,dollarType));
+                    return Ok(await stockDataService.GetAllStatistics(default, DateTime.Today, dollarType));
                 else
-                    return Ok(await context.GetAllStatistics(default, DateTime.Today));
+                    return Ok(await stockDataService.GetAllStatistics(default, DateTime.Today));
             }
             catch (Exception ex)
             {

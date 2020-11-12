@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace StocksAPI.ExternalDataProviders
 {
-    public class RavaDataProvider : IStockDataProvider
+    public class RavaDataProvider : IStockExternalDataProvider
     {
         const string BASE_URL = "http://ravaonline.com/empresas/precioshistoricos.php?e={0}&csv=1";
 

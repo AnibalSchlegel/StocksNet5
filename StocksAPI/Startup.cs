@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using StocksAPI.Data;
 using StocksAPI.ExternalDataProviders;
+using StocksAPI.Services;
 
 namespace StocksAPI
 {
@@ -24,7 +25,8 @@ namespace StocksAPI
             services.AddControllers();
             services.AddDbContext<StockDbContext>(item => item.UseSqlServer(Configuration.GetConnectionString("myconn")));
             services.AddScoped<IDollarDataProvider, AmbitoDollarDataProvider>();
-            services.AddScoped<IStockDataProvider, RavaDataProvider>();
+            services.AddScoped<IStockExternalDataProvider, RavaDataProvider>();
+            services.AddScoped<IStockDataService, StockDataService>();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
