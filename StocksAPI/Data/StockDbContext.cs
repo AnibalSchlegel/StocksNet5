@@ -151,9 +151,9 @@ namespace StocksAPI.Data
                 AveragePrice = data.Average(a => a.ClosingPrice).TwoDecimalValues(),                          
                 AveragePriceUsd = data.Average(au => au.ClosingPriceUSD).TwoDecimalValues(),                  
                 AverageVolume = data.Average(v => v.Volume).ZeroDecimalValues(),                              
-                LastPrice = data.OrderByDescending(d => d.Date).First().ClosingPrice.TwoDecimalValues(),      
-                LastPriceUsd = data.OrderByDescending(d => d.Date).First().ClosingPriceUSD.TwoDecimalValues(),
-                LastVolume = data.OrderByDescending(d => d.Date).First().Volume.ZeroDecimalValues(), 
+                LastPrice = data.OrderByDescending(d => d.Date).ToList().First().ClosingPrice.TwoDecimalValues(),      
+                LastPriceUsd = data.OrderByDescending(d => d.Date).ToList().First().ClosingPriceUSD.TwoDecimalValues(),
+                LastVolume = data.OrderByDescending(d => d.Date).ToList().First().Volume.ZeroDecimalValues(), 
                 MaxPrice = data.Max(m => m.ClosingPrice).TwoDecimalValues(),      
                 MaxPriceUsd = data.Max(m => m.ClosingPriceUSD).TwoDecimalValues(),
                 MaxVolume = data.Max(m => m.Volume).ZeroDecimalValues(),          
@@ -161,6 +161,8 @@ namespace StocksAPI.Data
                 MinPriceUsd = data.Min(m => m.ClosingPriceUSD).TwoDecimalValues(),
                 MinVolume = data.Min(m => m.Volume).ZeroDecimalValues()
             };
+
+            var temp = data.Where(d => d.Date >= DateTime.Today.AddDays(-20)).ToList();
 
             return stats;
         }
@@ -172,7 +174,7 @@ namespace StocksAPI.Data
 
             List<Statistics> list = new List<Statistics>();
 
-            await this.Symbol.OrderBy(s => s.Name).ForEachAsync(symbol =>
+            await this.Symbol.ForEachAsync(symbol =>
             {
                 var stat = GetStatistics(symbol.ID, dateFrom, dateTo, dollarType);
                 stat.Symbol = symbol.Name;

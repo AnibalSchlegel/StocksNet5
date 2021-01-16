@@ -59,11 +59,6 @@ namespace StocksAPI.Services
 
             try
             {
-                //using (var context = contextFactory.CreateDbContext())
-                //{
-                    
-                //}
-
                 using (var context = contextFactory.CreateDbContext())
                 {
                     date = await context.GetLastKnownDateForDollarData();
