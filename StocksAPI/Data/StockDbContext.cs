@@ -4,15 +4,13 @@ using StocksAPI.Extensions;
 using StocksAPI.Models;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace StocksAPI.Data
 {
-    public class StockDbContext: DbContext
+    public sealed class StockDbContext: DbContext
     {
         public StockDbContext(DbContextOptions options): base(options)
             { }
@@ -32,21 +30,21 @@ namespace StocksAPI.Data
 
             if (currency.Equals("PESOS"))
             {
-                priceSeries = PriceData.Where(x => x.Symbol_ID == symbolId).OrderBy(x => x.Date).ToList();
+                priceSeries = await PriceData.Where(x => x.Symbol_ID == symbolId).OrderBy(x => x.Date).ToListAsync();
             }
             else
             {
                 priceSeries = await this.PriceData.Where(ps => ps.Symbol.ID == symbolId)
                     .Join(this.DollarData.Where(ds => ds.DollarType == currency), ps => ps.Date, ds => ds.ExchangeDate,
-               (ps, ds) => new PriceData
-               {
+                (ps, ds) => new PriceData
+                {
                    ClosingPrice = (ps.ClosingPrice / ds.Price),
                    Date = ps.Date,
                    MaxPrice = (ps.MaxPrice / ds.Price),
                    MinPrice = (ps.MinPrice / ds.Price),
                    OpenPrice = (ps.OpenPrice / ds.Price),
                    Volume = ps.Volume
-               }).OrderBy(x=>x.Date).ToListAsync();
+                }).OrderBy(x=>x.Date).ToListAsync();
             }
 
             return new AnalyticProcessor(symbol, priceSeries).ProcessData();
@@ -108,7 +106,9 @@ namespace StocksAPI.Data
 
             if (currency.Equals("PESOS"))
             {
-                priceSeries = symbolId > 0 ? await PriceData.Where(x => x.Symbol_ID == symbolId).OrderBy(x => x.Date).ToListAsync() : await PriceData.OrderBy(x => x.Date).ToListAsync();
+                priceSeries = symbolId > 0 
+                    ? await PriceData.Where(x => x.Symbol_ID == symbolId).OrderBy(x => x.Date).ToListAsync() 
+                    : await PriceData.OrderBy(x => x.Date).ToListAsync();
             }
             else
             {
@@ -147,19 +147,20 @@ namespace StocksAPI.Data
                     ClosingPriceUSD = (ps.ClosingPrice / ds.Price)
                 });
 
-            var stats = new Statistics(
-                data.Average(a => a.ClosingPrice).TwoDecimalValues(),
-                data.Average(au => au.ClosingPriceUSD).TwoDecimalValues(),
-                data.Average(v => v.Volume).ZeroDecimalValues(),
-                data.OrderByDescending(d => d.Date).First().ClosingPrice.TwoDecimalValues(),
-                data.OrderByDescending(d => d.Date).First().ClosingPriceUSD.TwoDecimalValues(),
-                data.OrderByDescending(d => d.Date).First().Volume.ZeroDecimalValues(),
-                data.Max(m => m.ClosingPrice).TwoDecimalValues(),
-                data.Max(m => m.ClosingPriceUSD).TwoDecimalValues(),
-                data.Max(m => m.Volume).ZeroDecimalValues(),
-                data.Min(m => m.ClosingPrice).TwoDecimalValues(),
-                data.Min(m => m.ClosingPriceUSD).TwoDecimalValues()
-            );
+            var stats = new Statistics {
+                AveragePrice = data.Average(a => a.ClosingPrice).TwoDecimalValues(),                          
+                AveragePriceUsd = data.Average(au => au.ClosingPriceUSD).TwoDecimalValues(),                  
+                AverageVolume = data.Average(v => v.Volume).ZeroDecimalValues(),                              
+                LastPrice = data.OrderByDescending(d => d.Date).First().ClosingPrice.TwoDecimalValues(),      
+                LastPriceUsd = data.OrderByDescending(d => d.Date).First().ClosingPriceUSD.TwoDecimalValues(),
+                LastVolume = data.OrderByDescending(d => d.Date).First().Volume.ZeroDecimalValues(), 
+                MaxPrice = data.Max(m => m.ClosingPrice).TwoDecimalValues(),      
+                MaxPriceUsd = data.Max(m => m.ClosingPriceUSD).TwoDecimalValues(),
+                MaxVolume = data.Max(m => m.Volume).ZeroDecimalValues(),          
+                MinPrice = data.Min(m => m.ClosingPrice).TwoDecimalValues(),      
+                MinPriceUsd = data.Min(m => m.ClosingPriceUSD).TwoDecimalValues(),
+                MinVolume = data.Min(m => m.Volume).ZeroDecimalValues()
+            };
 
             return stats;
         }
@@ -171,12 +172,12 @@ namespace StocksAPI.Data
 
             List<Statistics> list = new List<Statistics>();
 
-            await foreach (Symbol s in this.Symbol.OrderBy(s => s.Name).AsAsyncEnumerable())
+            await this.Symbol.OrderBy(s => s.Name).ForEachAsync(symbol =>
             {
-                var stat = GetStatistics(s.ID, dateFrom, dateTo, dollarType);
-                stat.Symbol = s.Name;
+                var stat = GetStatistics(symbol.ID, dateFrom, dateTo, dollarType);
+                stat.Symbol = symbol.Name;
                 list.Add(stat);
-            }
+            });
             list.Sort();
             return list;
         }

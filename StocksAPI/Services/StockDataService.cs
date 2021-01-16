@@ -11,65 +11,82 @@ namespace StocksAPI.Services
 {
     public class StockDataService : IStockDataService
     {
-        readonly StockDbContext context;
+        readonly IDbContextFactory<StockDbContext> contextFactory;
         readonly IStockExternalDataProvider stockDataProvider;
         readonly IDollarDataProvider dollarDataProvider;
 
-        public StockDataService(StockDbContext context, IStockExternalDataProvider stockDataProvider, IDollarDataProvider dollarDataProvider)
+        public StockDataService(IDbContextFactory<StockDbContext> contextFactory, IStockExternalDataProvider stockDataProvider, IDollarDataProvider dollarDataProvider)
         {
-            this.context = context;
+            this.contextFactory = contextFactory;
             this.dollarDataProvider = dollarDataProvider;
             this.stockDataProvider = stockDataProvider;
         }
 
         public async Task<byte[]> GetSymbolDataForCsv(string symbol, string currency)
         {
+            using var context = contextFactory.CreateDbContext();
             return await context.GetPriceDataAsCsv(symbol, currency);
         }
 
         public async Task<List<Symbol>> GetAllSymbols()
         {
+            using var context = contextFactory.CreateDbContext();
             return await context.Set<Symbol>().OrderBy(x => x.Name).ToListAsync();
         }
 
         public async Task<AnalyticData> GetAnalytics(string symbol, string currency)
         {
+            using var context = contextFactory.CreateDbContext();
             return await context.GetAnalytics(symbol, currency);
         }
 
         public async Task<DateTime> GetLastUpdateDate()
         {
+            using var context = contextFactory.CreateDbContext();
             return await context.GetLastUpdateDate();
         }
 
         public async Task<List<Statistics>> GetAllStatistics(DateTime dateFrom, DateTime dateTo, string dollarType = "CCL")
         {
+            using var context = contextFactory.CreateDbContext();
             return await context.GetAllStatistics(dateFrom, dateTo, dollarType);
         }
 
         public async Task<bool> Update()
         {
+            DateTime date;
+            List<Symbol> symbols = new List<Symbol>();
+
             try
             {
-                var date = await context.GetLastKnownDateForDollarData();
+                //using (var context = contextFactory.CreateDbContext())
+                //{
+                    
+                //}
 
-                foreach (DollarData dd in await dollarDataProvider.DownloadDollarData(date))
+                using (var context = contextFactory.CreateDbContext())
                 {
-                    this.context.DollarData.Add(dd);
-                }
-                foreach (Symbol s in context.Symbol)
-                {
-                    DateTime? lastDate = await context.GetLastKnownDateForSymbol(s.ID);
-                    this.context.PriceData.AddRange(await stockDataProvider.DownloadPriceSeries(s, lastDate));
-                }
+                    date = await context.GetLastKnownDateForDollarData();
+                    symbols = context.Symbol.ToList();
 
-                context.UpdateStatus();
-                await context.SaveChangesAsync();
+                    symbols.ForEach(symbol =>
+                    {
+                        DateTime? lastDate = context.GetLastKnownDateForSymbol(symbol.ID).Result;
+                        context.PriceData.AddRange(stockDataProvider.DownloadPriceSeries(symbol, lastDate).Result);
+                        context.UpdateStatus();
+                        context.SaveChanges();
+
+                    });
+                    context.DollarData.AddRange(dollarDataProvider.DownloadDollarData(date).Result);
+                    context.UpdateStatus();
+                    context.SaveChanges();
+                }
 
                 return true;
             }
-            catch
+            catch(Exception ex)
             {
+                var message = ex.Message;
                 return false;
             }
         }

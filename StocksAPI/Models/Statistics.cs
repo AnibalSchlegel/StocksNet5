@@ -5,36 +5,19 @@ namespace StocksAPI.Models
 {
     public class Statistics : IComparable<Statistics>
     {
-        public Statistics(decimal averagePrice, decimal averagePriceUsd, decimal averageVolume, decimal lastPrice, decimal lastPriceUsd, decimal lastVolume, decimal maxPrice,
-            decimal maxPriceUsd, decimal maxVolume, decimal minPrice, decimal minPriceUsd)
-        {
-            AveragePrice = averagePrice;
-            AveragePriceUsd = averagePriceUsd;
-            AverageVolume = averageVolume;
-            LastPrice = lastPrice;
-            LastPriceUsd = lastPriceUsd;
-            LastVolume = lastVolume;
-            MaxPrice = maxPrice;
-            MaxPriceUsd = maxPriceUsd;
-            MaxVolume = maxVolume;
-            MinPrice = minPrice;
-            MinPriceUsd = minPriceUsd;
-        }
-
-        //public int LongestDownTrend { get { return this. } }
-        //public int LongestUpTrend { get { return this. } }
         public string Symbol { get; set; }
-        public decimal LastPrice { get; }
-        public decimal LastPriceUsd { get; }
-        public decimal AveragePrice { get; }
-        public decimal AveragePriceUsd { get; }
-        public decimal MaxPrice { get; }
-        public decimal MaxPriceUsd { get; }
-        public decimal MinPrice { get; }
-        public decimal MinPriceUsd { get; }
-        public decimal AverageVolume { get; }
-        public decimal MaxVolume { get; }
-        public decimal LastVolume { get; }
+        public decimal LastPrice { get; set; }
+        public decimal LastPriceUsd { get; set; }
+        public decimal AveragePrice { get; set; }
+        public decimal AveragePriceUsd { get; set; }
+        public decimal MaxPrice { get; set; }
+        public decimal MaxPriceUsd { get; set; }
+        public decimal MinPrice { get; set; }
+        public decimal MinPriceUsd { get; set; }
+        public decimal AverageVolume { get; set; }
+        public decimal MaxVolume { get; set; }
+        public decimal MinVolume { get; set; }
+        public decimal LastVolume { get; set; }
 
         public decimal VsMaxPrice {
             get

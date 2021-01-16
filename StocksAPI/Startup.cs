@@ -23,7 +23,8 @@ namespace StocksAPI
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.AddDbContext<StockDbContext>(item => item.UseSqlServer(Configuration.GetConnectionString("myconn")));
+            //services.AddDbContext<StockDbContext>(item => item.UseSqlServer(Configuration.GetConnectionString("myconn")));
+            services.AddDbContextFactory<StockDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("myconn")));
             services.AddScoped<IDollarDataProvider, AmbitoDollarDataProvider>();
             services.AddScoped<IStockExternalDataProvider, RavaDataProvider>();
             services.AddScoped<IStockDataService, StockDataService>();
