@@ -12,7 +12,7 @@ namespace StocksAPI.ExternalDataProviders
     public class AmbitoDollarDataProvider : IDollarDataProvider
     {
         private const string BASE_URL_OFICIAL = "https://mercados.ambito.com/dolar/oficial/historico-general/{0}-{1}-{2}/{3}-{4}-{5}";
-        private const string BASE_URL_CCL = "https://mercados.ambito.com//dolar/ccl/historico-general/{0}-{1}-{2}/{3}-{4}-{5}";
+        private const string BASE_URL_CCL = "https://mercados.ambito.com/dolar/informal/historico-general/{0}-{1}-{2}/{3}-{4}-{5}";
 
         public async Task<List<DollarData>> DownloadDollarData(DateTime lastKnownPrice)
         {
